@@ -1,8 +1,10 @@
 # Cloudflare Pages project settings (https://developers.cloudflare.com/pages/functions/wrangler-configuration/).
 #
-# The presence of `pages_build_output_dir` marks this as a Pages project. `wrangler pages deploy`
-# (`npm run deploy`) takes the project name from `name` and uploads that directory, so no flags are
-# needed. The site is static: there are no Functions, bindings or runtime variables.
+# The presence of `pages_build_output_dir` marks this as a Pages project. The Pages dashboard reads
+# `name` and `pages_build_output_dir` from this file and shows both read-only for a Git-connected
+# project, and `wrangler pages deploy` (`npm run deploy`) takes the project name from `name` and
+# uploads that directory, so no flags are needed. The site is static: there are no Functions,
+# bindings or runtime variables.
 name = "tidewater"
 pages_build_output_dir = "dist"
 compatibility_date = "2026-10-22"

@@ -129,8 +129,7 @@ npm run dev      # http://127.0.0.1:5189
 npm run build    # static build in dist/
 ```
 
-Every push to `main` builds the site in CI and, once the Cloudflare Pages secrets below are set,
-uploads it with `.github/workflows/deploy-cloudflare.yml`.
+Every push builds and deploys through Cloudflare Pages' Git integration (see below).
 
 ## Deploying to Cloudflare Pages
 
@@ -141,36 +140,36 @@ The build is about 60 MB across ~140 files, inside the Pages limits of 25 MiB pe
 files. `npm run build` ends with `tools/check-pages-limits.mjs`, which fails the build if an asset
 passes either limit or if `index.html` / `_headers` are missing.
 
-Pick one of the two ways to deploy. A project created with Direct Upload cannot be switched to Git
-integration later.
-
-**Git integration** (also builds branches and pull requests as preview deployments)
+**Connect the repository (once)**
 
 1. Push the repository to GitHub or GitLab, then in the Cloudflare dashboard go to
    **Workers & Pages → Create → Pages → Connect to Git** and pick the repository.
 2. Framework preset **Vite**, build command `npm run build`, build output directory `dist`, root `/`.
-   The committed `wrangler.toml` already declares the output directory (the dashboard shows it
-   read-only), and `.nvmrc` pins Node 22 for the build image.
-3. The site is served from `https://tidewater.pages.dev`. If that name is taken, change `name` in
-   `wrangler.toml` before creating the project.
+   The committed `wrangler.toml` declares the project name and output directory, so the dashboard
+   shows both read-only; `.nvmrc` pins Node 22 for the build image.
+3. Select **Save and Deploy**. The site is served from `https://tidewater.pages.dev`; if that name is
+   taken, choose another in the dashboard and change `name` in `wrangler.toml` to match.
 
-**Direct upload**
+After that Cloudflare builds and deploys on its own: `main` goes to production, any other branch or
+pull request becomes a preview deployment at `https://<branch>.tidewater.pages.dev`. There is no
+GitHub Actions workflow - the build runs on Cloudflare's build image (`npm ci` plus the Vite build,
+about a minute).
+
+**Manual deploys**
+
+A Git-connected project can still be deployed from the CLI (Cloudflare's docs: "For existing
+Git-integrated projects, you can manually create deployments using wrangler deploy"), which is handy
+to try a local change without pushing:
 
 ```sh
-npx wrangler login                                                    # once
-npx wrangler pages project create tidewater --production-branch main
-npm run deploy                                                        # build + upload to production
-npm run deploy:preview                                                # build + upload a preview
+npx wrangler login                                  # once
+npm run deploy                                      # build + upload the current branch
+npm run deploy:preview                              # build + upload as branch "preview"
 ```
 
-`wrangler pages deploy` uploads the current git branch: `main` (the project's production branch) goes
-to production, any other branch becomes a preview deployment at
-`https://<branch>.tidewater.pages.dev`.
-
-For CI, `.github/workflows/deploy-cloudflare.yml` builds and uploads on every push to `main`. Add
-`CLOUDFLARE_API_TOKEN` (Cloudflare Pages: Edit) and `CLOUDFLARE_ACCOUNT_ID` as repository secrets to
-enable the upload; until then the job skips the upload and only checks the build. If you pick Git
-integration instead, delete that workflow and let Cloudflare build the project.
+`wrangler pages deploy` uploads the current git branch: `main` (the production branch) goes to
+production, any other branch becomes a preview deployment. Drag and drop in the dashboard does not
+work for Git-connected projects.
 
 Notes:
 
