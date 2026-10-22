@@ -131,6 +131,54 @@ npm run build    # static build in dist/
 
 Every push to `main` deploys to GitHub Pages through `.github/workflows/deploy.yml`.
 
+## Deploying to Cloudflare Pages
+
+`npm run build` produces a fully static site in `dist/` (no Functions, no Worker), so it needs no
+adapter: `wrangler.toml` points Pages at `dist/` and names the project `tidewater`, and
+`public/_headers` (copied into the build as `dist/_headers`) sets the cache and security headers.
+The build is about 60 MB across ~140 files, inside the Pages limits of 25 MiB per file and 20,000
+files. `npm run build` ends with `tools/check-pages-limits.mjs`, which fails the build if an asset
+passes either limit or if `index.html` / `_headers` are missing.
+
+Pick one of the two ways to deploy. A project created with Direct Upload cannot be switched to Git
+integration later.
+
+**Git integration** (also builds branches and pull requests as preview deployments)
+
+1. Push the repository to GitHub or GitLab, then in the Cloudflare dashboard go to
+   **Workers & Pages → Create → Pages → Connect to Git** and pick the repository.
+2. Framework preset **Vite**, build command `npm run build`, build output directory `dist`, root `/`.
+   The committed `wrangler.toml` already declares the output directory (the dashboard shows it
+   read-only), and `.nvmrc` pins Node 22 for the build image.
+3. The site is served from `https://tidewater.pages.dev`. If that name is taken, change `name` in
+   `wrangler.toml` before creating the project.
+
+**Direct upload**
+
+```sh
+npx wrangler login                                                    # once
+npx wrangler pages project create tidewater --production-branch main
+npm run deploy                                                        # build + upload to production
+npm run deploy:preview                                                # build + upload a preview
+```
+
+`wrangler pages deploy` uploads the current git branch: `main` (the project's production branch) goes
+to production, any other branch becomes a preview deployment at
+`https://<branch>.tidewater.pages.dev`.
+
+For CI, `.github/workflows/deploy-cloudflare.yml` builds and uploads on every push to `main`. Add
+`CLOUDFLARE_API_TOKEN` (Cloudflare Pages: Edit) and `CLOUDFLARE_ACCOUNT_ID` as repository secrets to
+enable the upload; until then the job skips the upload and only checks the build. Both it and the
+GitHub Pages workflow run on `main`, so delete the one you do not use.
+
+Notes:
+
+- WebGPU needs a secure context: `https://*.pages.dev` is one, a plain `http://` host is not.
+- The build keeps relative asset URLs (`base: './'`), so it also works under a sub-path and on branch
+  preview URLs.
+- On a custom domain inside a Cloudflare zone, disable **Rocket Loader**: it rewrites module scripts.
+- `_headers` is a Pages-only feature; GitHub Pages ignores it and serves `dist/` as-is.
+
 ## Project layout
 
 | Folder | Contents |
@@ -145,7 +193,7 @@ Every push to `main` deploys to GitHub Pages through `.github/workflows/deploy.y
 | `src/player/` | Walking, swimming, the boat and the free camera |
 | `src/audio/` | The sample-based soundscape |
 | `src/ui/` | Settings panel, loading screen and HUD |
-| `tools/` | Scripts that fetch and convert the characters, stall props and fishing sounds |
+| `tools/` | Scripts that fetch and convert the characters, stall props and fishing sounds, and the Cloudflare Pages build check |
 | `test/` | Headless engine smoke test and game-logic tests (`npm test`), and HUD / loader dev pages |
 
 ## Credits and license

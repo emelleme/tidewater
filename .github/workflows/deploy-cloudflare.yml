@@ -1,0 +1,46 @@
+name: Deploy to Cloudflare Pages
+
+# Direct upload of the static build. Skips itself until both CLOUDFLARE_API_TOKEN and
+# CLOUDFLARE_ACCOUNT_ID repository secrets exist (see "Deploying to Cloudflare Pages" in README.md),
+# so a push to main never fails on an unconfigured fork. If you use Cloudflare's Git integration
+# instead, leave the secrets unset and let Cloudflare build the project.
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: cloudflare-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Check Cloudflare credentials
+        id: creds
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID are not set; skipping the Cloudflare Pages deploy."
+          fi
+      - name: Deploy
+        if: steps.creds.outputs.ready == 'true'
+        # name and pages_build_output_dir come from wrangler.toml
+        run: npx wrangler pages deploy --branch "$GITHUB_REF_NAME" --commit-hash "$GITHUB_SHA"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
