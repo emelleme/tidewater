@@ -129,7 +129,8 @@ npm run dev      # http://127.0.0.1:5189
 npm run build    # static build in dist/
 ```
 
-Every push to `main` deploys to GitHub Pages through `.github/workflows/deploy.yml`.
+Every push to `main` builds the site in CI and, once the Cloudflare Pages secrets below are set,
+uploads it with `.github/workflows/deploy-cloudflare.yml`.
 
 ## Deploying to Cloudflare Pages
 
@@ -168,8 +169,8 @@ to production, any other branch becomes a preview deployment at
 
 For CI, `.github/workflows/deploy-cloudflare.yml` builds and uploads on every push to `main`. Add
 `CLOUDFLARE_API_TOKEN` (Cloudflare Pages: Edit) and `CLOUDFLARE_ACCOUNT_ID` as repository secrets to
-enable the upload; until then the job skips the upload and only checks the build. Both it and the
-GitHub Pages workflow run on `main`, so delete the one you do not use.
+enable the upload; until then the job skips the upload and only checks the build. If you pick Git
+integration instead, delete that workflow and let Cloudflare build the project.
 
 Notes:
 
@@ -177,7 +178,6 @@ Notes:
 - The build keeps relative asset URLs (`base: './'`), so it also works under a sub-path and on branch
   preview URLs.
 - On a custom domain inside a Cloudflare zone, disable **Rocket Loader**: it rewrites module scripts.
-- `_headers` is a Pages-only feature; GitHub Pages ignores it and serves `dist/` as-is.
 
 ## Project layout
 
